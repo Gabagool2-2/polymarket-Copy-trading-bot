@@ -1,0 +1,1 @@
+console.log("Copy Trading Bot GRPC V3.0", '\n'); 
