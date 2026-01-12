@@ -1,11 +1,12 @@
 # Polymarket Copy Trading Bot
 
+The Polymarket Copy Trading Bot is an automated trade replication system that mirrors the activity of consistently profitable Polymarket participants. It operates continuously, dynamically scales position sizes relative to available capital, and executes trades in real time to ensure alignment with source strategies.
+
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-43853D?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![License](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 
-An automated copy trading bot for Polymarket that monitors selected traders and replicates their trades in real-time.
 
 ## Contact info
 
