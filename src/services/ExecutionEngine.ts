@@ -1,3 +1,8 @@
+/**
+ * Trade execution engine module.
+ * This module contains functions to execute individual and aggregated trades on Polymarket.
+ */
+
 import { ClobClient } from '@polymarket/clob-client';
 import { UserActivityInterface } from '../interfaces/User';
 import { getUserActivityModel } from '../models/userHistory';
@@ -12,19 +17,11 @@ import { AggregatedTrade } from './TradeAggregator';
  * Executes a single trade by validating it, posting the order to Polymarket, and updating the database.
  * Marks the trade as processing, validates balance and positions, executes the order via postOrder,
  * and marks the trade as completed or failed based on the outcome.
- *
+ * @function executeTrade
  * @param {ClobClient} clobClient - The configured ClobClient instance for API interactions.
  * @param {UserActivityInterface} trade - The trade activity to execute.
  * @param {string} userAddress - The address of the user whose trade is being copied.
  * @returns {Promise<void>} A promise that resolves when the trade execution is complete.
- *
- * @example
- * ```typescript
- * const client = await createClobClient();
- * const trade: UserActivityInterface = { ... };
- * await executeTrade(client, trade, '0x123...');
- * ```
- *
  * @throws {DatabaseError} If database operations fail.
  * @throws {Error} If order posting or validation fails.
  */
@@ -102,18 +99,10 @@ const executeTrade = async (
  * For each aggregated trade, validates the combined position, creates a synthetic trade object
  * with aggregated values, and executes the order. Marks all individual trades in the aggregation
  * as processed or failed based on the outcome.
- *
+ * @function executeAggregatedTrades
  * @param {ClobClient} clobClient - The configured ClobClient instance for API interactions.
  * @param {AggregatedTrade[]} aggregatedTrades - Array of aggregated trades ready for execution.
  * @returns {Promise<void>} A promise that resolves when all aggregated trades have been processed.
- *
- * @example
- * ```typescript
- * const client = await createClobClient();
- * const readyTrades = await getReadyAggregatedTrades();
- * await executeAggregatedTrades(client, readyTrades);
- * ```
- *
  * @throws {DatabaseError} If database operations fail.
  * @throws {Error} If order posting or validation fails.
  */

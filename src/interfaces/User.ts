@@ -1,5 +1,14 @@
+/**
+ * User-related interfaces for the copy trading bot.
+ * This module defines TypeScript interfaces for user activities and positions.
+ */
+
 import mongoose from 'mongoose';
 
+/**
+ * Interface representing a user's trading activity.
+ * @interface UserActivityInterface
+ */
 export interface UserActivityInterface {
     _id: mongoose.Types.ObjectId;
     proxyWallet: string;
@@ -28,6 +37,10 @@ export interface UserActivityInterface {
     myBoughtSize?: number; // Tracks actual tokens we bought
 }
 
+/**
+ * Interface representing a user's position in a market.
+ * @interface UserPositionInterface
+ */
 export interface UserPositionInterface {
     _id: mongoose.Types.ObjectId;
     proxyWallet: string;

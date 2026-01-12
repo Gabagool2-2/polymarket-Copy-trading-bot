@@ -1,3 +1,8 @@
+/**
+ * Script to check and set USDC allowance for Polymarket trading.
+ * This script checks the current USDC balance and allowance, and sets unlimited allowance if needed.
+ */
+
 import { ethers } from 'ethers';
 import { AssetType, ClobClient, getContractConfig } from '@polymarket/clob-client';
 import { SignatureType } from '@polymarket/order-utils';
@@ -24,6 +29,13 @@ const USDC_ABI = [
     'function decimals() view returns (uint8)',
 ];
 
+/**
+ * Build a ClobClient instance.
+ * @async
+ * @function buildClobClient
+ * @param {ethers.providers.JsonRpcProvider} provider - The provider.
+ * @returns {Promise<ClobClient>} The ClobClient instance.
+ */
 const buildClobClient = async (provider: ethers.providers.JsonRpcProvider): Promise<ClobClient> => {
     const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
     const code = await provider.getCode(PROXY_WALLET);
@@ -88,6 +100,13 @@ const buildClobClient = async (provider: ethers.providers.JsonRpcProvider): Prom
     );
 };
 
+/**
+ * Format amount with decimals.
+ * @function formatClobAmount
+ * @param {string} raw - The raw amount.
+ * @param {number} decimals - The decimals.
+ * @returns {string} The formatted amount.
+ */
 const formatClobAmount = (raw: string, decimals: number): string => {
     try {
         return ethers.utils.formatUnits(raw, decimals);
@@ -100,6 +119,14 @@ const formatClobAmount = (raw: string, decimals: number): string => {
     }
 };
 
+/**
+ * Sync Polymarket allowance cache.
+ * @async
+ * @function syncPolymarketAllowanceCache
+ * @param {number} decimals - The decimals.
+ * @param {ethers.providers.JsonRpcProvider} provider - The provider.
+ * @returns {Promise<void>}
+ */
 const syncPolymarketAllowanceCache = async (
     decimals: number,
     provider: ethers.providers.JsonRpcProvider
@@ -178,6 +205,12 @@ const syncPolymarketAllowanceCache = async (
     }
 };
 
+/**
+ * Check and set allowance.
+ * @async
+ * @function checkAndSetAllowance
+ * @returns {Promise<void>}
+ */
 async function checkAndSetAllowance() {
     console.log('🔍 Checking USDC balance and allowance...\n');
 

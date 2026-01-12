@@ -1,3 +1,8 @@
+/**
+ * Trade aggregation module.
+ * This module handles aggregating small trades into larger ones for efficient execution.
+ */
+
 import { UserActivityInterface } from '../interfaces/User';
 import { ENV } from '../config/env';
 import { getUserActivityModel } from '../models/userHistory';
@@ -8,10 +13,18 @@ import { DatabaseError } from '../errors';
 const TRADE_AGGREGATION_WINDOW_SECONDS = ENV.TRADE_AGGREGATION_WINDOW_SECONDS;
 const TRADE_AGGREGATION_MIN_TOTAL_USD = 1.0; // Polymarket minimum
 
+/**
+ * Interface for a trade with user address.
+ * @interface TradeWithUser
+ */
 interface TradeWithUser extends UserActivityInterface {
     userAddress: string;
 }
 
+/**
+ * Interface for an aggregated trade.
+ * @interface AggregatedTrade
+ */
 interface AggregatedTrade {
     userAddress: string;
     conditionId: string;
@@ -30,7 +43,10 @@ interface AggregatedTrade {
 const tradeAggregationBuffer: Map<string, AggregatedTrade> = new Map();
 
 /**
- * Generate a unique key for trade aggregation based on user, market, side
+ * Generate a unique key for trade aggregation based on user, market, side.
+ * @function getAggregationKey
+ * @param {TradeWithUser} trade - The trade.
+ * @returns {string} The aggregation key.
  */
 const getAggregationKey = (trade: TradeWithUser): string => {
     return `${trade.userAddress}:${trade.conditionId}:${trade.asset}:${trade.side}`;
@@ -40,23 +56,9 @@ const getAggregationKey = (trade: TradeWithUser): string => {
  * Adds a trade to the aggregation buffer or updates an existing aggregation.
  * If an aggregation for the same user, condition, asset, and side already exists, it updates the total size and recalculates the average price.
  * Otherwise, creates a new aggregation entry.
- *
+ * @function addToAggregationBuffer
  * @param {TradeWithUser} trade - The trade to add to the buffer, including user address.
  * @returns {void}
- *
- * @example
- * ```typescript
- * const trade: TradeWithUser = {
- *   userAddress: '0x...',
- *   conditionId: '0x...',
- *   asset: '0x...',
- *   side: 'BUY',
- *   usdcSize: 100,
- *   price: 0.5,
- *   // ... other properties
- * };
- * addToAggregationBuffer(trade);
- * ```
  */
 const addToAggregationBuffer = (trade: TradeWithUser): void => {
     const key = getAggregationKey(trade);
@@ -94,20 +96,9 @@ const addToAggregationBuffer = (trade: TradeWithUser): void => {
  * Trades are considered ready if they meet both criteria:
  * 1. Total USDC size is greater than or equal to the minimum threshold
  * 2. The aggregation time window has passed since the first trade in the group
- *
  * Trades that don't meet the minimum size are marked as processed and skipped.
- *
+ * @function getReadyAggregatedTrades
  * @returns {Promise<AggregatedTrade[]>} A promise that resolves to an array of ready aggregated trades.
- *
- * @example
- * ```typescript
- * const readyTrades = await getReadyAggregatedTrades();
- * for (const trade of readyTrades) {
- *   // Execute the aggregated trade
- *   console.log(`Executing ${trade.totalUsdcSize} USDC trade for ${trade.userAddress}`);
- * }
- * ```
- *
  * @throws {DatabaseError} If there's an error updating trade status in the database.
  */
 const getReadyAggregatedTrades = async (): Promise<AggregatedTrade[]> => {
@@ -155,14 +146,8 @@ const getReadyAggregatedTrades = async (): Promise<AggregatedTrade[]> => {
 /**
  * Gets the current number of trade groups in the aggregation buffer.
  * This represents the number of unique trade aggregations currently being accumulated.
- *
+ * @function getAggregationBufferSize
  * @returns {number} The number of trade groups in the buffer.
- *
- * @example
- * ```typescript
- * const bufferSize = getAggregationBufferSize();
- * console.log(`Currently aggregating ${bufferSize} trade groups`);
- * ```
  */
 const getAggregationBufferSize = (): number => {
     return tradeAggregationBuffer.size;

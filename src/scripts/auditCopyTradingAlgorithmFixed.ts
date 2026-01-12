@@ -1,3 +1,8 @@
+/**
+ * Script to audit the fixed copy trading algorithm by simulating trades.
+ * This script fetches historical trades from traders, simulates the improved copy trading strategy, and generates detailed audit reports.
+ */
+
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -16,6 +21,10 @@ const colors = {
     white: (text: string) => `\x1b[37m${text}\x1b[0m`,
 };
 
+/**
+ * Interface for trade data.
+ * @interface Trade
+ */
 interface Trade {
     id: string;
     timestamp: number;
@@ -28,12 +37,20 @@ interface Trade {
     outcome: string;
 }
 
+/**
+ * Interface for position data.
+ * @interface Position
+ */
 interface Position {
     asset: string;
     size: number;
     currentValue: number;
 }
 
+/**
+ * Interface for simulated position data.
+ * @interface SimulatedPosition
+ */
 interface SimulatedPosition {
     market: string;
     outcome: string;
@@ -55,6 +72,10 @@ interface SimulatedPosition {
     }[];
 }
 
+/**
+ * Interface for trader audit result data.
+ * @interface TraderAuditResult
+ */
 interface TraderAuditResult {
     address: string;
     shortAddress: string;
@@ -77,6 +98,10 @@ interface TraderAuditResult {
     error?: string;
 }
 
+/**
+ * Interface for combined bot result data.
+ * @interface CombinedBotResult
+ */
 interface CombinedBotResult {
     startingCapital: number;
     currentCapital: number;
@@ -93,6 +118,10 @@ interface CombinedBotResult {
     capitalPerTrader: number;
 }
 
+/**
+ * Interface for audit report data.
+ * @interface AuditReport
+ */
 interface AuditReport {
     timestamp: string;
     config: {
@@ -129,6 +158,11 @@ const MAX_TRADES_LIMIT = parseInt(process.env.SIM_MAX_TRADES || '3000');
 // NEW: Copy a fixed percentage of trader's order size instead of portfolio percentage
 const COPY_PERCENTAGE = parseFloat(process.env.COPY_PERCENTAGE || '1.0'); // Copy 1% of trader's order size by default
 
+/**
+ * Parse trader addresses from environment variables.
+ * @function parseTraderAddresses
+ * @returns {string[]} Array of trader addresses.
+ */
 function parseTraderAddresses(): string[] {
     const envAddresses = process.env.AUDIT_ADDRESSES || process.env.USER_ADDRESSES || '';
 
@@ -156,6 +190,16 @@ function parseTraderAddresses(): string[] {
         .filter((addr) => addr.length > 0);
 }
 
+/**
+ * Fetch a batch of trades for a trader.
+ * @async
+ * @function fetchBatch
+ * @param {string} traderAddress - The trader's address.
+ * @param {number} offset - The offset for pagination.
+ * @param {number} limit - The limit for pagination.
+ * @param {number} sinceTimestamp - The timestamp to fetch from.
+ * @returns {Promise<Trade[]>} Array of trades.
+ */
 async function fetchBatch(
     traderAddress: string,
     offset: number,
@@ -191,6 +235,13 @@ async function fetchBatch(
     }
 }
 
+/**
+ * Fetch all trader activity.
+ * @async
+ * @function fetchTraderActivity
+ * @param {string} traderAddress - The trader's address.
+ * @returns {Promise<Trade[]>} Array of trades.
+ */
 async function fetchTraderActivity(traderAddress: string): Promise<Trade[]> {
     try {
         const sinceTimestamp = Math.floor((Date.now() - AUDIT_DAYS * 24 * 60 * 60 * 1000) / 1000);
@@ -246,6 +297,13 @@ async function fetchTraderActivity(traderAddress: string): Promise<Trade[]> {
     }
 }
 
+/**
+ * Fetch trader positions.
+ * @async
+ * @function fetchTraderPositions
+ * @param {string} traderAddress - The trader's address.
+ * @returns {Promise<Position[]>} Array of positions.
+ */
 async function fetchTraderPositions(traderAddress: string): Promise<Position[]> {
     try {
         const response = await axios.get(
@@ -263,7 +321,14 @@ async function fetchTraderPositions(traderAddress: string): Promise<Position[]> 
     }
 }
 
-// FIXED: Copy fixed percentage of trader's order size
+/**
+ * Simulate trading for a trader with fixed percentage copying.
+ * @async
+ * @function simulateTrader
+ * @param {string} traderAddress - The trader's address.
+ * @param {number} startingCapital - The starting capital.
+ * @returns {Promise<TraderAuditResult>} The audit result.
+ */
 async function simulateTrader(
     traderAddress: string,
     startingCapital: number
@@ -501,6 +566,13 @@ async function simulateTrader(
     }
 }
 
+/**
+ * Simulate combined bot performance.
+ * @async
+ * @function simulateCombinedBot
+ * @param {TraderAuditResult[]} traderResults - Array of trader results.
+ * @returns {Promise<CombinedBotResult>} The combined result.
+ */
 async function simulateCombinedBot(traderResults: TraderAuditResult[]): Promise<CombinedBotResult> {
     console.log(colors.cyan('\n🤖 Simulating combined bot copying all traders...\n'));
 
@@ -556,6 +628,11 @@ async function simulateCombinedBot(traderResults: TraderAuditResult[]): Promise<
     };
 }
 
+/**
+ * Print the audit report.
+ * @function printAuditReport
+ * @param {AuditReport} report - The audit report.
+ */
 function printAuditReport(report: AuditReport) {
     console.log('\n' + colors.cyan('═'.repeat(100)));
     console.log(colors.cyan('  🔍 COPY TRADING ALGORITHM AUDIT REPORT (FIXED)'));
@@ -711,6 +788,11 @@ function printAuditReport(report: AuditReport) {
     console.log('\n' + colors.cyan('═'.repeat(100)) + '\n');
 }
 
+/**
+ * Save the audit report to file.
+ * @function saveAuditReport
+ * @param {AuditReport} report - The audit report.
+ */
 function saveAuditReport(report: AuditReport) {
     const resultsDir = path.join(process.cwd(), 'audit_results');
     if (!fs.existsSync(resultsDir)) {

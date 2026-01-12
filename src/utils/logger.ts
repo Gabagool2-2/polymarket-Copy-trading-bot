@@ -1,8 +1,17 @@
+/**
+ * Logging utility module.
+ * This module provides structured logging with Winston, console output with colors, and various logging methods for different types of information.
+ */
+
 import chalk from 'chalk';
 import * as winston from 'winston';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import * as path from 'path';
 
+/**
+ * Enum for log levels.
+ * @enum {number}
+ */
 enum LogLevel {
     DEBUG = 0,
     INFO = 1,
@@ -11,6 +20,10 @@ enum LogLevel {
     CRITICAL = 4
 }
 
+/**
+ * Logger class for handling application logging.
+ * @class Logger
+ */
 class Logger {
     private static logger: winston.Logger;
     private static minLevel: LogLevel;
@@ -78,6 +91,10 @@ class Logger {
         return `${address.slice(0, 6)}${'*'.repeat(34)}${address.slice(-4)}`;
     }
 
+    /**
+     * Logs a header message with formatting.
+     * @param {string} title - The title to display.
+     */
     static header(title: string) {
         if (this.shouldLog(LogLevel.INFO)) {
             console.log('\n' + chalk.cyan('━'.repeat(70)));
@@ -87,6 +104,11 @@ class Logger {
         this.logger.info('Header displayed', { title, type: 'header' });
     }
 
+    /**
+     * Logs an info message.
+     * @param {string} message - The message to log.
+     * @param {any} [meta] - Additional metadata.
+     */
     static info(message: string, meta?: any) {
         if (this.shouldLog(LogLevel.INFO)) {
             console.log(chalk.blue('ℹ'), message);
@@ -94,6 +116,11 @@ class Logger {
         this.logger.info(message, meta);
     }
 
+    /**
+     * Logs a success message.
+     * @param {string} message - The message to log.
+     * @param {any} [meta] - Additional metadata.
+     */
     static success(message: string, meta?: any) {
         if (this.shouldLog(LogLevel.INFO)) {
             console.log(chalk.green('✓'), message);
@@ -101,6 +128,11 @@ class Logger {
         this.logger.info(message, { ...meta, type: 'success' });
     }
 
+    /**
+     * Logs a warning message.
+     * @param {string} message - The message to log.
+     * @param {any} [meta] - Additional metadata.
+     */
     static warning(message: string, meta?: any) {
         if (this.shouldLog(LogLevel.WARN)) {
             console.log(chalk.yellow('⚠'), message);
@@ -108,6 +140,11 @@ class Logger {
         this.logger.warn(message, meta);
     }
 
+    /**
+     * Logs an error message.
+     * @param {string} message - The message to log.
+     * @param {any} [meta] - Additional metadata.
+     */
     static error(message: string, meta?: any) {
         if (this.shouldLog(LogLevel.ERROR)) {
             console.log(chalk.red('✗'), message);
@@ -115,6 +152,11 @@ class Logger {
         this.logger.error(message, meta);
     }
 
+    /**
+     * Logs a debug message.
+     * @param {string} message - The message to log.
+     * @param {any} [meta] - Additional metadata.
+     */
     static debug(message: string, meta?: any) {
         if (this.shouldLog(LogLevel.DEBUG)) {
             console.log(chalk.gray('🐛'), message);
@@ -122,6 +164,11 @@ class Logger {
         this.logger.debug(message, meta);
     }
 
+    /**
+     * Logs a critical message.
+     * @param {string} message - The message to log.
+     * @param {any} [meta] - Additional metadata.
+     */
     static critical(message: string, meta?: any) {
         if (this.shouldLog(LogLevel.CRITICAL)) {
             console.log(chalk.red.bold('🚨'), message);
@@ -129,6 +176,12 @@ class Logger {
         this.logger.log('critical', message, meta);
     }
 
+    /**
+     * Logs trade information.
+     * @param {string} traderAddress - The trader's address.
+     * @param {string} action - The action performed.
+     * @param {any} details - Trade details.
+     */
     static trade(traderAddress: string, action: string, details: any) {
         if (this.shouldLog(LogLevel.INFO)) {
             console.log('\n' + chalk.magenta('─'.repeat(70)));
@@ -170,6 +223,12 @@ class Logger {
         });
     }
 
+    /**
+     * Logs balance information.
+     * @param {number} myBalance - The user's balance.
+     * @param {number} traderBalance - The trader's balance.
+     * @param {string} traderAddress - The trader's address.
+     */
     static balance(myBalance: number, traderBalance: number, traderAddress: string) {
         if (this.shouldLog(LogLevel.INFO)) {
             console.log(chalk.gray('Capital (USDC + Positions):'));
@@ -190,6 +249,12 @@ class Logger {
         });
     }
 
+    /**
+     * Logs order result.
+     * @param {boolean} success - Whether the order was successful.
+     * @param {string} message - The result message.
+     * @param {any} [meta] - Additional metadata.
+     */
     static orderResult(success: boolean, message: string, meta?: any) {
         if (success) {
             if (this.shouldLog(LogLevel.INFO)) {
@@ -204,6 +269,10 @@ class Logger {
         }
     }
 
+    /**
+     * Logs monitoring status.
+     * @param {number} traderCount - The number of traders being monitored.
+     */
     static monitoring(traderCount: number) {
         const timestamp = new Date().toLocaleTimeString();
         if (this.shouldLog(LogLevel.INFO)) {
@@ -216,6 +285,11 @@ class Logger {
         this.logger.info('Monitoring status', { traderCount, type: 'monitoring' });
     }
 
+    /**
+     * Logs startup information.
+     * @param {string[]} traders - List of trader addresses.
+     * @param {string} myWallet - The user's wallet address.
+     */
     static startup(traders: string[], myWallet: string) {
         if (this.shouldLog(LogLevel.INFO)) {
             console.log('\n');
@@ -243,6 +317,11 @@ class Logger {
         });
     }
 
+    /**
+     * Logs database connection information.
+     * @param {string[]} traders - List of trader addresses.
+     * @param {number[]} counts - Trade counts for each trader.
+     */
     static dbConnection(traders: string[], counts: number[]) {
         if (this.shouldLog(LogLevel.INFO)) {
             console.log('\n' + chalk.cyan('📦 Database Status:'));
@@ -256,6 +335,9 @@ class Logger {
         this.logger.info('Database connection status', { traders: traderData, type: 'db_connection' });
     }
 
+    /**
+     * Logs a separator line.
+     */
     static separator() {
         if (this.shouldLog(LogLevel.DEBUG)) {
             console.log(chalk.dim('─'.repeat(70)));
@@ -266,6 +348,11 @@ class Logger {
     private static spinnerFrames = ['⏳', '⌛', '⏳'];
     private static spinnerIndex = 0;
 
+    /**
+     * Logs waiting status.
+     * @param {number} traderCount - The number of traders.
+     * @param {string} [extraInfo] - Extra information.
+     */
     static waiting(traderCount: number, extraInfo?: string) {
         const timestamp = new Date().toLocaleTimeString();
         const spinner = this.spinnerFrames[this.spinnerIndex % this.spinnerFrames.length];
@@ -281,10 +368,23 @@ class Logger {
         this.logger.debug('Waiting for trades', { traderCount, extraInfo, type: 'waiting' });
     }
 
+    /**
+     * Clears the current line.
+     */
     static clearLine() {
         process.stdout.write('\r' + ' '.repeat(100) + '\r');
     }
 
+    /**
+     * Logs user's positions.
+     * @param {string} wallet - The wallet address.
+     * @param {number} count - Number of positions.
+     * @param {any[]} topPositions - Top positions.
+     * @param {number} overallPnl - Overall P&L.
+     * @param {number} totalValue - Total value.
+     * @param {number} initialValue - Initial value.
+     * @param {number} currentBalance - Current balance.
+     */
     static myPositions(
         wallet: string,
         count: number,
@@ -370,6 +470,13 @@ class Logger {
         });
     }
 
+    /**
+     * Logs traders' positions.
+     * @param {string[]} traders - List of traders.
+     * @param {number[]} positionCounts - Position counts.
+     * @param {any[][]} [positionDetails] - Position details.
+     * @param {number[]} [profitabilities] - Profitabilities.
+     */
     static tradersPositions(
         traders: string[],
         positionCounts: number[],

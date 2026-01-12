@@ -1,8 +1,17 @@
+/**
+ * Script to check P&L discrepancy in Polymarket data.
+ * This script analyzes positions and trade history to identify discrepancies in profit/loss calculations.
+ */
+
 import { ENV } from '../config/env';
 import fetchData from '../utils/fetchData';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 
+/**
+ * Interface for activity data.
+ * @interface Activity
+ */
 interface Activity {
     proxyWallet: string;
     timestamp: number;
@@ -19,6 +28,10 @@ interface Activity {
     outcome?: string;
 }
 
+/**
+ * Interface for position data.
+ * @interface Position
+ */
 interface Position {
     asset: string;
     conditionId: string;
@@ -38,6 +51,12 @@ interface Position {
     outcome?: string;
 }
 
+/**
+ * Check P&L discrepancy.
+ * @async
+ * @function checkDiscrepancy
+ * @returns {Promise<void>}
+ */
 const checkDiscrepancy = async () => {
     console.log('🔍 Detailed P&L discrepancy check\n');
     console.log(`Wallet: ${PROXY_WALLET}\n`);

@@ -1,9 +1,18 @@
+/**
+ * Script to check user's wallet statistics on Polymarket.
+ * This script fetches and displays balance, positions, and trade history for the configured wallet.
+ */
+
 import { ENV } from '../config/env';
 import fetchData from '../utils/fetchData';
 import getMyBalance from '../utils/getMyBalance';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 
+/**
+ * Interface for activity data.
+ * @interface Activity
+ */
 interface Activity {
     proxyWallet: string;
     timestamp: number;
@@ -20,6 +29,10 @@ interface Activity {
     outcome?: string;
 }
 
+/**
+ * Interface for position data.
+ * @interface Position
+ */
 interface Position {
     asset: string;
     conditionId: string;
@@ -38,6 +51,12 @@ interface Position {
     outcome?: string;
 }
 
+/**
+ * Check user's stats.
+ * @async
+ * @function checkMyStats
+ * @returns {Promise<void>}
+ */
 const checkMyStats = async () => {
     console.log('🔍 Checking your wallet statistics on Polymarket\n');
     console.log(`Wallet: ${PROXY_WALLET}\n`);

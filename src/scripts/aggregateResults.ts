@@ -1,3 +1,8 @@
+/**
+ * Script to aggregate results from various strategy result directories.
+ * This script scans multiple directories for JSON result files, aggregates strategy performance data, and generates reports on top strategies and traders.
+ */
+
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -13,6 +18,10 @@ const colors = {
     magenta: (text: string) => `\x1b[35m${text}\x1b[0m`,
 };
 
+/**
+ * Interface for trader result data.
+ * @interface TraderResult
+ */
 interface TraderResult {
     address: string;
     roi: number;
@@ -22,6 +31,10 @@ interface TraderResult {
     status?: string;
 }
 
+/**
+ * Interface for scan result data.
+ * @interface ScanResult
+ */
 interface ScanResult {
     scanDate: string;
     config: {
@@ -39,6 +52,10 @@ interface ScanResult {
     traders: TraderResult[];
 }
 
+/**
+ * Interface for analysis result data.
+ * @interface AnalysisResult
+ */
 interface AnalysisResult {
     timestamp: number;
     traderAddress: string;
@@ -57,6 +74,10 @@ interface AnalysisResult {
     }[];
 }
 
+/**
+ * Interface for strategy performance data.
+ * @interface StrategyPerformance
+ */
 interface StrategyPerformance {
     strategyId: string;
     historyDays: number;
@@ -71,6 +92,12 @@ interface StrategyPerformance {
     filesCount: number;
 }
 
+/**
+ * Main function to aggregate results from strategy directories.
+ * @async
+ * @function aggregateResults
+ * @returns {Promise<void>}
+ */
 async function aggregateResults() {
     console.log(
         colors.cyan('\n╔════════════════════════════════════════════════════════════════╗')

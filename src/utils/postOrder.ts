@@ -1,3 +1,8 @@
+/**
+ * Order posting utility module.
+ * This module handles posting buy, sell, and merge orders to Polymarket.
+ */
+
 import { ClobClient, OrderType, Side } from '@polymarket/clob-client';
 import { ENV } from '../config/env';
 import { UserActivityInterface, UserPositionInterface } from '../interfaces/User';
@@ -63,6 +68,19 @@ const isInsufficientBalanceOrAllowanceError = (message: string | undefined): boo
     return lower.includes('not enough balance') || lower.includes('allowance');
 };
 
+/**
+ * Posts an order to Polymarket based on the trade condition.
+ * @function postOrder
+ * @param {ClobClient} clobClient - The ClobClient instance.
+ * @param {string} condition - The condition ('buy', 'sell', 'merge').
+ * @param {UserPositionInterface | undefined} my_position - The user's position.
+ * @param {UserPositionInterface | undefined} user_position - The trader's position.
+ * @param {UserActivityInterface} trade - The trade activity.
+ * @param {number} my_balance - The user's balance.
+ * @param {number} user_balance - The trader's balance.
+ * @param {string} userAddress - The trader's address.
+ * @returns {Promise<void>}
+ */
 const postOrder = async (
     clobClient: ClobClient,
     condition: string,

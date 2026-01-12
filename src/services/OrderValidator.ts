@@ -1,3 +1,8 @@
+/**
+ * Order validation module.
+ * This module provides validation logic for trades before execution.
+ */
+
 import { UserPositionInterface } from '../interfaces/User';
 import { UserActivityInterface } from '../interfaces/User';
 import { ENV } from '../config/env';
@@ -9,6 +14,10 @@ import { ValidationError } from '../errors';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 
+/**
+ * Interface for trade validation results.
+ * @interface ValidationResult
+ */
 interface ValidationResult {
     isValid: boolean;
     reason?: string;
@@ -22,22 +31,10 @@ interface ValidationResult {
  * Validates whether a trade can be executed based on current positions and balances.
  * Performs comprehensive checks including balance verification for buy orders,
  * position data retrieval, and circuit breaker protection for API calls.
- *
+ * @function validateTrade
  * @param {UserActivityInterface} trade - The trade activity to validate.
  * @param {string} userAddress - The address of the user whose trade is being validated.
  * @returns {Promise<ValidationResult>} A promise that resolves to a validation result object containing validity status and additional data.
- *
- * @example
- * ```typescript
- * const trade: UserActivityInterface = { ... };
- * const result = await validateTrade(trade, '0x123...');
- * if (result.isValid) {
- *   console.log('Trade is valid, balance:', result.myBalance);
- * } else {
- *   console.log('Trade invalid:', result.reason);
- * }
- * ```
- *
  * @throws {ValidationError} If positions data from API is invalid.
  */
 const validateTrade = async (

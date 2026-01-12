@@ -1,3 +1,8 @@
+/**
+ * Main entry point for the copy trading bot.
+ * This module initializes the application, sets up services, and handles graceful shutdown.
+ */
+
 import connectDB, { closeDB } from './config/db';
 import { ENV } from './config/env';
 import createClobClient from './utils/createClobClient';
@@ -12,6 +17,12 @@ const PROXY_WALLET = ENV.PROXY_WALLET;
 // Graceful shutdown handler
 let isShuttingDown = false;
 
+/**
+ * Handle graceful shutdown.
+ * @function gracefulShutdown
+ * @param {string} signal - The signal that triggered shutdown.
+ * @returns {Promise<void>}
+ */
 const gracefulShutdown = async (signal: string) => {
     if (isShuttingDown) {
         Logger.warning('Shutdown already in progress, forcing exit...');
@@ -61,6 +72,12 @@ process.on('uncaughtException', (error: Error) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
+/**
+ * Main application function.
+ * @async
+ * @function main
+ * @returns {Promise<void>}
+ */
 export const main = async () => {
     try {
         // Welcome message for first-time users

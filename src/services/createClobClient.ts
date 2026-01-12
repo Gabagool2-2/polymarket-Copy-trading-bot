@@ -1,3 +1,8 @@
+/**
+ * ClobClient creation and configuration module.
+ * This module provides functions to create and configure a ClobClient for interacting with Polymarket's API, handling Gnosis Safe detection and API key management.
+ */
+
 import { ethers } from 'ethers';
 import { ClobClient } from '@polymarket/clob-client';
 import { SignatureType } from '@polymarket/order-utils';
@@ -10,7 +15,10 @@ const CLOB_HTTP_URL = ENV.CLOB_HTTP_URL;
 const RPC_URL = ENV.RPC_URL;
 
 /**
- * Determines if a wallet is a Gnosis Safe by checking if it has contract code
+ * Determines if a wallet is a Gnosis Safe by checking if it has contract code.
+ * @function isGnosisSafe
+ * @param {string} address - The wallet address to check.
+ * @returns {Promise<boolean>} True if the address is a Gnosis Safe.
  */
 const isGnosisSafe = async (address: string): Promise<boolean> => {
     try {

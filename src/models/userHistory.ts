@@ -1,5 +1,13 @@
+/**
+ * Mongoose models for user history data.
+ * This module defines schemas and models for storing user positions and activities in MongoDB.
+ */
+
 import mongoose, { Schema } from 'mongoose';
 
+/**
+ * Mongoose schema for user positions.
+ */
 const positionSchema = new Schema({
     _id: {
         type: Schema.Types.ObjectId,
@@ -33,6 +41,9 @@ const positionSchema = new Schema({
     negativeRisk: { type: Boolean, required: false },
 });
 
+/**
+ * Mongoose schema for user activities.
+ */
 const activitySchema = new Schema({
     _id: {
         type: Schema.Types.ObjectId,
@@ -65,11 +76,23 @@ const activitySchema = new Schema({
     myBoughtSize: { type: Number, required: false }, // Tracks actual tokens we bought
 });
 
+/**
+ * Get the Mongoose model for user positions for a specific wallet.
+ * @function getUserPositionModel
+ * @param {string} walletAddress - The wallet address.
+ * @returns {mongoose.Model} The Mongoose model.
+ */
 const getUserPositionModel = (walletAddress: string) => {
     const collectionName = `user_positions_${walletAddress}`;
     return mongoose.model(collectionName, positionSchema, collectionName);
 };
 
+/**
+ * Get the Mongoose model for user activities for a specific wallet.
+ * @function getUserActivityModel
+ * @param {string} walletAddress - The wallet address.
+ * @returns {mongoose.Model} The Mongoose model.
+ */
 const getUserActivityModel = (walletAddress: string) => {
     const collectionName = `user_activities_${walletAddress}`;
     return mongoose.model(collectionName, activitySchema, collectionName);

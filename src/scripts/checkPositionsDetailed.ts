@@ -1,8 +1,17 @@
+/**
+ * Script to check detailed positions.
+ * This script fetches and displays detailed information about current positions.
+ */
+
 import { ENV } from '../config/env';
 import fetchData from '../utils/fetchData';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 
+/**
+ * Interface for position data.
+ * @interface Position
+ */
 interface Position {
     asset: string;
     conditionId: string;
@@ -21,6 +30,12 @@ interface Position {
     outcome?: string;
 }
 
+/**
+ * Check positions.
+ * @async
+ * @function checkPositions
+ * @returns {Promise<void>}
+ */
 async function checkPositions() {
     console.log('\n📊 CURRENT POSITIONS:\n');
 

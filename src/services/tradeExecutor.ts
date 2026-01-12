@@ -1,3 +1,8 @@
+/**
+ * Trade executor service module.
+ * This module manages the execution of trades, supporting both immediate and aggregated execution modes.
+ */
+
 import { ClobClient } from '@polymarket/clob-client';
 import { UserActivityInterface } from '../interfaces/User';
 import { ENV } from '../config/env';
@@ -25,6 +30,11 @@ const userActivityModels = USER_ADDRESSES.map((address) => ({
     model: getUserActivityModel(address),
 }));
 
+/**
+ * Read pending trades from all users.
+ * @function readTempTrades
+ * @returns {Promise<TradeWithUser[]>} Array of pending trades.
+ */
 const readTempTrades = async (): Promise<TradeWithUser[]> => {
     const allTrades: TradeWithUser[] = [];
 
@@ -62,7 +72,8 @@ const readTempTrades = async (): Promise<TradeWithUser[]> => {
 let isRunning = true;
 
 /**
- * Stop the trade executor gracefully
+ * Stop the trade executor gracefully.
+ * @function stopTradeExecutor
  */
 export const stopTradeExecutor = () => {
     isRunning = false;
@@ -73,23 +84,10 @@ export const stopTradeExecutor = () => {
  * Starts the trade execution service that processes pending trades from monitored users.
  * Continuously checks for new trades in the database and executes them either immediately
  * or through aggregation based on configuration. Supports both aggregated and non-aggregated modes.
- *
  * The executor can be stopped gracefully using the stopTradeExecutor function.
- *
+ * @function tradeExecutor
  * @param {ClobClient} clobClient - The configured ClobClient instance for executing trades on Polymarket.
  * @returns {Promise<void>} A promise that resolves when the executor is stopped.
- *
- * @example
- * ```typescript
- * const client = await createClobClient();
- * tradeExecutor(client).then(() => {
- *   console.log('Trade executor stopped');
- * });
- *
- * // Later, stop the executor
- * stopTradeExecutor();
- * ```
- *
  * @throws {DatabaseError} If there are issues querying or updating the database.
  * @throws {Error} If trade execution fails through the ExecutionEngine.
  */

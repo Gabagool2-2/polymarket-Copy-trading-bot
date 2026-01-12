@@ -1,9 +1,21 @@
+/**
+ * Database connection module for the copy trading bot.
+ * This module handles MongoDB connection and disconnection.
+ */
+
 import mongoose from 'mongoose';
 import { ENV } from './env';
 import chalk from 'chalk';
 
 const uri = ENV.MONGO_URI || 'mongodb://localhost:27017/polymarket_copytrading';
 
+/**
+ * Connect to MongoDB database.
+ * @async
+ * @function connectDB
+ * @returns {Promise<void>}
+ * @throws {Error} If connection fails, exits the process.
+ */
 const connectDB = async () => {
     try {
         await mongoose.connect(uri);

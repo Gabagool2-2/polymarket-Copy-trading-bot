@@ -1,3 +1,8 @@
+/**
+ * Environment configuration module for the copy trading bot.
+ * This module loads and validates environment variables, parses configurations, and provides typed access to settings.
+ */
+
 import * as dotenv from 'dotenv';
 import { CopyStrategy, CopyStrategyConfig, parseTieredMultipliers } from './copyStrategy';
 dotenv.config();
@@ -176,6 +181,13 @@ validateNumericConfig();
 validateUrls();
 
 // Parse USER_ADDRESSES: supports both comma-separated string and JSON array
+/**
+ * Parse user addresses from environment variable input.
+ * @function parseUserAddresses
+ * @param {string} input - The input string, either comma-separated or JSON array.
+ * @returns {string[]} Array of validated Ethereum addresses.
+ * @throws {Error} If addresses are invalid.
+ */
 const parseUserAddresses = (input: string): string[] => {
     const trimmed = input.trim();
     // Check if it's JSON array format
@@ -238,6 +250,12 @@ const parseUserAddresses = (input: string): string[] => {
 };
 
 // Parse copy strategy configuration
+/**
+ * Parse copy strategy configuration from environment variables.
+ * @function parseCopyStrategy
+ * @returns {CopyStrategyConfig} The parsed configuration object.
+ * @throws {Error} If configuration is invalid.
+ */
 const parseCopyStrategy = (): CopyStrategyConfig => {
     // Support legacy COPY_PERCENTAGE + TRADE_MULTIPLIER for backward compatibility
     const hasLegacyConfig = process.env.COPY_PERCENTAGE && !process.env.COPY_STRATEGY;

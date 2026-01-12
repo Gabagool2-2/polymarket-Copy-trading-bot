@@ -1,3 +1,8 @@
+/**
+ * Trade monitoring service module.
+ * This module monitors traders for new trades and updates the database.
+ */
+
 import { ENV } from '../config/env';
 import { getUserActivityModel, getUserPositionModel } from '../models/userHistory';
 import fetchData from '../utils/fetchData';
@@ -21,6 +26,11 @@ const userModels = USER_ADDRESSES.map((address) => ({
     UserPosition: getUserPositionModel(address),
 }));
 
+/**
+ * Initialize the trade monitor by displaying current positions and balances.
+ * @function init
+ * @returns {Promise<void>}
+ */
 const init = async () => {
     // Get database counts with error handling
     const counts: number[] = [];
@@ -142,6 +152,11 @@ const init = async () => {
     Logger.tradersPositions(USER_ADDRESSES, positionCounts, positionDetails, profitabilities);
 };
 
+/**
+ * Fetch trade data from Polymarket API and update database.
+ * @function fetchTradeData
+ * @returns {Promise<void>}
+ */
 const fetchTradeData = async () => {
     const activityBreaker = CircuitBreakerRegistry.getBreaker('polymarket-activity', 5, 60000);
     const positionsBreaker = CircuitBreakerRegistry.getBreaker('polymarket-user-positions', 3, 30000);
@@ -277,7 +292,8 @@ let isFirstRun = true;
 let isRunning = true;
 
 /**
- * Stop the trade monitor gracefully
+ * Stop the trade monitor gracefully.
+ * @function stopTradeMonitor
  */
 export const stopTradeMonitor = () => {
     isRunning = false;
@@ -289,22 +305,9 @@ export const stopTradeMonitor = () => {
  * This function initializes the database connections, displays initial positions and balances,
  * marks historical trades as processed on first run, and then continuously fetches new trade data
  * from Polymarket API at regular intervals.
- *
  * The monitor can be stopped gracefully using the stopTradeMonitor function.
- *
+ * @function tradeMonitor
  * @returns {Promise<void>} A promise that resolves when the monitor is stopped.
- *
- * @example
- * ```typescript
- * // Start monitoring
- * tradeMonitor().then(() => {
- *   console.log('Monitoring stopped');
- * });
- *
- * // Later, stop monitoring
- * stopTradeMonitor();
- * ```
- *
  * @throws {Error} If USER_ADDRESSES environment variable is not defined or empty.
  */
 const tradeMonitor = async () => {

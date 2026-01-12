@@ -1,9 +1,18 @@
+/**
+ * Script to check both wallet addresses for trading activity.
+ * This script compares two addresses to determine which one is actively trading and provides guidance on configuration.
+ */
+
 import { ENV } from '../config/env';
 import fetchData from '../utils/fetchData';
 import getMyBalance from '../utils/getMyBalance';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 
+/**
+ * Interface for activity data.
+ * @interface Activity
+ */
 interface Activity {
     proxyWallet: string;
     timestamp: number;
@@ -20,6 +29,10 @@ interface Activity {
     outcome?: string;
 }
 
+/**
+ * Interface for position data.
+ * @interface Position
+ */
 interface Position {
     asset: string;
     conditionId: string;
@@ -38,6 +51,12 @@ interface Position {
     outcome?: string;
 }
 
+/**
+ * Check both wallets for activity.
+ * @async
+ * @function checkBothWallets
+ * @returns {Promise<void>}
+ */
 const checkBothWallets = async () => {
     console.log('🔍 CHECKING BOTH ADDRESSES\n');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');

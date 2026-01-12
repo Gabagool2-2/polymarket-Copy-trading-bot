@@ -8,6 +8,11 @@
  * - ADAPTIVE: Dynamically adjust percentage based on trader's order size
  */
 
+/**
+ * Enum representing the different copy trading strategies available.
+ * @enum {string}
+ */
+
 export enum CopyStrategy {
     PERCENTAGE = 'PERCENTAGE',
     FIXED = 'FIXED',
@@ -15,9 +20,8 @@ export enum CopyStrategy {
 }
 
 /**
- * Tier definition for tiered multipliers
- * Example: { min: 100, max: 500, multiplier: 0.2 }
- * means trades between $100-$500 use 0.2x multiplier
+ * Interface for defining a multiplier tier based on trade size.
+ * @interface MultiplierTier
  */
 export interface MultiplierTier {
     min: number; // Minimum trade size in USD (inclusive)
@@ -25,6 +29,10 @@ export interface MultiplierTier {
     multiplier: number; // Multiplier to apply
 }
 
+/**
+ * Interface for the configuration of a copy trading strategy.
+ * @interface CopyStrategyConfig
+ */
 export interface CopyStrategyConfig {
     // Core strategy
     strategy: CopyStrategy;
@@ -55,6 +63,10 @@ export interface CopyStrategyConfig {
     maxDailyVolumeUSD?: number; // Maximum total volume per day (optional)
 }
 
+/**
+ * Interface for the result of order size calculation, including the final amount and reasoning.
+ * @interface OrderSizeCalculation
+ */
 export interface OrderSizeCalculation {
     traderOrderSize: number; // Original trader's order size
     baseAmount: number; // Calculated amount before limits
