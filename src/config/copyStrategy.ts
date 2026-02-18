@@ -63,6 +63,8 @@ export interface CopyStrategyConfig {
     maxDailyVolumeUSD?: number; // Maximum total volume per day (optional)
 }
 
+
+
 /**
  * Interface for the result of order size calculation, including the final amount and reasoning.
  * @interface OrderSizeCalculation
