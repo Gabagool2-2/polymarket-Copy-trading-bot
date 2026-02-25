@@ -6,11 +6,9 @@
 import { ethers } from 'ethers';
 import { ClobClient } from '@polymarket/clob-client';
 import { SignatureType } from '@polymarket/order-utils';
-import { ENV } from '../config/env';
+import { ENV, FollowerWallet } from '../config/env';
 import Logger from '../utils/logger';
 
-const PROXY_WALLET = ENV.PROXY_WALLET;
-const PRIVATE_KEY = ENV.PRIVATE_KEY;
 const CLOB_HTTP_URL = ENV.CLOB_HTTP_URL;
 const RPC_URL = ENV.RPC_URL;
 
@@ -34,32 +32,15 @@ const isGnosisSafe = async (address: string): Promise<boolean> => {
 };
 
 /**
- * Creates and configures a ClobClient for interacting with Polymarket's API.
- * This function initializes a ClobClient with the appropriate signature type based on whether the proxy wallet is a Gnosis Safe or an EOA.
- * It handles API key creation and derivation, suppressing console output during the process.
- *
- * @returns {Promise<ClobClient>} A promise that resolves to a configured ClobClient instance.
- *
- * @example
- * ```typescript
- * const client = await createClobClient();
- * // Use client to interact with Polymarket API
- * ```
- *
- * @throws {Error} If required environment variables are not set or if API key creation fails.
+ * Creates a ClobClient for a specific follower wallet (for multi-wallet copy trading).
  */
-const createClobClient = async (): Promise<ClobClient> => {
+export const createClobClientForWallet = async (follower: FollowerWallet): Promise<ClobClient> => {
     const chainId = 137;
     const host = CLOB_HTTP_URL as string;
-    const wallet = new ethers.Wallet(PRIVATE_KEY as string);
-
-    // Detect if the proxy wallet is a Gnosis Safe or EOA
-    const isProxySafe = await isGnosisSafe(PROXY_WALLET as string);
+    const key = follower.privateKey.startsWith('0x') ? follower.privateKey : `0x${follower.privateKey}`;
+    const wallet = new ethers.Wallet(key);
+    const isProxySafe = await isGnosisSafe(follower.address);
     const signatureType = isProxySafe ? SignatureType.POLY_GNOSIS_SAFE : SignatureType.EOA;
-
-    Logger.info(
-        `Wallet type detected: ${isProxySafe ? 'Gnosis Safe' : 'EOA (Externally Owned Account)'}`
-    );
 
     let clobClient = new ClobClient(
         host,
@@ -67,10 +48,9 @@ const createClobClient = async (): Promise<ClobClient> => {
         wallet,
         undefined,
         signatureType,
-        isProxySafe ? (PROXY_WALLET as string) : undefined
+        isProxySafe ? follower.address : undefined
     );
 
-    // Suppress console output during API key creation
     const originalConsoleLog = console.log;
     const originalConsoleError = console.error;
     console.log = function () {};
@@ -87,14 +67,41 @@ const createClobClient = async (): Promise<ClobClient> => {
         wallet,
         creds,
         signatureType,
-        isProxySafe ? (PROXY_WALLET as string) : undefined
+        isProxySafe ? follower.address : undefined
     );
 
-    // Restore console functions
     console.log = originalConsoleLog;
     console.error = originalConsoleError;
-
     return clobClient;
+};
+
+/**
+ * Returns one ClobClient per follower wallet. Used by executor for multi-wallet mode.
+ */
+export const getClobClients = async (): Promise<ClobClient[]> => {
+    const followers = ENV.FOLLOWER_WALLETS;
+    const clients: ClobClient[] = [];
+    for (let i = 0; i < followers.length; i++) {
+        const f = followers[i];
+        Logger.info(
+            `Initializing CLOB client ${i + 1}/${followers.length} for ${f.address.slice(0, 8)}...${f.address.slice(-4)}`
+        );
+        const client = await createClobClientForWallet(f);
+        clients.push(client);
+    }
+    return clients;
+};
+
+/**
+ * Creates and configures a ClobClient for the default (first) wallet.
+ * @returns {Promise<ClobClient>} A promise that resolves to a configured ClobClient instance.
+ */
+const createClobClient = async (): Promise<ClobClient> => {
+    const first = ENV.FOLLOWER_WALLETS[0];
+    Logger.info(
+        `Wallet type for ${first.address.slice(0, 8)}...${first.address.slice(-4)}`
+    );
+    return createClobClientForWallet(first);
 };
 
 export default createClobClient;

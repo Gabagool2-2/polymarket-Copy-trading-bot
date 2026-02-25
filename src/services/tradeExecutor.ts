@@ -1,15 +1,16 @@
 /**
  * Trade executor service module.
  * This module manages the execution of trades, supporting both immediate and aggregated execution modes.
+ * Supports multi-wallet: one ClobClient per follower; each trade is executed for every follower.
  */
 
 import { ClobClient } from '@polymarket/clob-client';
 import { UserActivityInterface } from '../interfaces/User';
-import { ENV } from '../config/env';
+import { ENV, FollowerWallet } from '../config/env';
 import { getUserActivityModel } from '../models/userHistory';
+import { getCopyExecutionModel } from '../models/copyExecution';
 import Logger from '../utils/logger';
 import { ErrorHandler } from '../utils/errorHandler';
-import { DatabaseError } from '../errors';
 import {
     TradeWithUser,
     addToAggregationBuffer,
@@ -23,6 +24,7 @@ import { executeTrade, executeAggregatedTrades } from './ExecutionEngine';
 const USER_ADDRESSES = ENV.USER_ADDRESSES;
 const TRADE_AGGREGATION_ENABLED = ENV.TRADE_AGGREGATION_ENABLED;
 const TRADE_AGGREGATION_WINDOW_SECONDS = ENV.TRADE_AGGREGATION_WINDOW_SECONDS;
+const FOLLOWER_WALLETS = ENV.FOLLOWER_WALLETS;
 
 // Create activity models for each user
 const userActivityModels = USER_ADDRESSES.map((address) => ({
@@ -68,6 +70,43 @@ const readTempTrades = async (): Promise<TradeWithUser[]> => {
     return allTrades;
 };
 
+/** Returns indices of followers that have not yet had a copy execution for this trade. */
+const getPendingFollowerIndices = async (
+    traderAddress: string,
+    activityId: unknown,
+    followers: FollowerWallet[]
+): Promise<number[]> => {
+    const CopyExecution = getCopyExecutionModel();
+    const existing = await CopyExecution.find({
+        traderAddress,
+        activityId,
+    })
+        .select('followerWallet')
+        .lean()
+        .exec();
+    const doneSet = new Set((existing || []).map((r: { followerWallet: string }) => r.followerWallet.toLowerCase()));
+    return followers
+        .map((f, i) => (doneSet.has(f.address.toLowerCase()) ? -1 : i))
+        .filter((i) => i >= 0);
+};
+
+/** Mark activity as fully processed when all followers have been attempted. */
+const markActivityFullyProcessedIfDone = async (
+    traderAddress: string,
+    activityId: unknown,
+    totalFollowers: number
+): Promise<void> => {
+    const CopyExecution = getCopyExecutionModel();
+    const count = await CopyExecution.countDocuments({ traderAddress, activityId }).exec();
+    if (count >= totalFollowers) {
+        const UserActivity = getUserActivityModel(traderAddress);
+        await UserActivity.updateOne(
+            { _id: activityId },
+            { $set: { bot: true, botExcutedTime: 1 } }
+        ).exec();
+    }
+};
+
 // Track if executor should continue running
 let isRunning = true;
 
@@ -81,18 +120,21 @@ export const stopTradeExecutor = () => {
 };
 
 /**
- * Starts the trade execution service that processes pending trades from monitored users.
- * Continuously checks for new trades in the database and executes them either immediately
- * or through aggregation based on configuration. Supports both aggregated and non-aggregated modes.
- * The executor can be stopped gracefully using the stopTradeExecutor function.
- * @function tradeExecutor
- * @param {ClobClient} clobClient - The configured ClobClient instance for executing trades on Polymarket.
- * @returns {Promise<void>} A promise that resolves when the executor is stopped.
- * @throws {DatabaseError} If there are issues querying or updating the database.
- * @throws {Error} If trade execution fails through the ExecutionEngine.
+ * Starts the trade execution service. Accepts one or more ClobClients (one per follower wallet).
+ * Each pending trade is executed for every follower that has not yet been processed.
  */
-const tradeExecutor = async (clobClient: ClobClient) => {
-    Logger.success(`Trade executor ready for ${USER_ADDRESSES.length} trader(s)`);
+const tradeExecutor = async (clobClients: ClobClient[]) => {
+    const clobClient = clobClients[0]; // primary for aggregation
+    const followers = FOLLOWER_WALLETS;
+    if (clobClients.length !== followers.length) {
+        Logger.warning(
+            `ClobClients count (${clobClients.length}) != FOLLOWER_WALLETS count (${followers.length}); using first ${clobClients.length} follower(s).`
+        );
+    }
+
+    Logger.success(
+        `Trade executor ready for ${USER_ADDRESSES.length} trader(s), ${Math.min(clobClients.length, followers.length)} wallet(s)`
+    );
     if (TRADE_AGGREGATION_ENABLED) {
         Logger.info(
             `Trade aggregation enabled: ${TRADE_AGGREGATION_WINDOW_SECONDS}s window, $${TRADE_AGGREGATION_MIN_TOTAL_USD} minimum`
@@ -105,41 +147,53 @@ const tradeExecutor = async (clobClient: ClobClient) => {
             const trades = await readTempTrades();
 
             if (TRADE_AGGREGATION_ENABLED) {
-                // Process with aggregation logic
                 if (trades.length > 0) {
                     Logger.clearLine();
                     Logger.info(
                         `📥 ${trades.length} new trade${trades.length > 1 ? 's' : ''} detected`
                     );
 
-                    // Add trades to aggregation buffer
                     for (const trade of trades) {
                         try {
-                            // Only aggregate BUY trades below minimum threshold
                             if (trade.side === 'BUY' && trade.usdcSize < TRADE_AGGREGATION_MIN_TOTAL_USD) {
                                 Logger.info(
                                     `Adding $${trade.usdcSize.toFixed(2)} ${trade.side} trade to aggregation buffer for ${trade.slug || trade.asset}`
                                 );
                                 addToAggregationBuffer(trade);
                             } else {
-                                // Execute large trades immediately (not aggregated)
                                 Logger.clearLine();
                                 Logger.header(`⚡ IMMEDIATE TRADE (above threshold)`);
-                                await ErrorHandler.withErrorHandling(
-                                    () => executeTrade(clobClient, trade, trade.userAddress),
-                                    `Executing immediate trade for ${trade.userAddress.slice(0, 6)}...${trade.userAddress.slice(-4)}`,
-                                    'execute immediate trade'
+                                const pendingIndices = await getPendingFollowerIndices(
+                                    trade.userAddress,
+                                    trade._id,
+                                    followers
+                                );
+                                for (const i of pendingIndices) {
+                                    await ErrorHandler.withErrorHandling(
+                                        () =>
+                                            executeTrade(
+                                                clobClients[i],
+                                                trade,
+                                                trade.userAddress,
+                                                followers[i].address
+                                            ),
+                                        `Executing immediate trade for ${trade.userAddress.slice(0, 6)}...`,
+                                        'execute immediate trade'
+                                    );
+                                }
+                                await markActivityFullyProcessedIfDone(
+                                    trade.userAddress,
+                                    trade._id,
+                                    followers.length
                                 );
                             }
                         } catch (error) {
-                            ErrorHandler.handle(error, `Processing trade for ${trade.userAddress.slice(0, 6)}...${trade.userAddress.slice(-4)}`);
-                            // Continue with other trades
+                            ErrorHandler.handle(error, `Processing trade for ${trade.userAddress.slice(0, 6)}...`);
                         }
                     }
                     lastCheck = Date.now();
                 }
 
-                // Check for ready aggregated trades
                 const readyAggregations = await getReadyAggregatedTrades();
                 if (readyAggregations.length > 0) {
                     Logger.clearLine();
@@ -153,8 +207,7 @@ const tradeExecutor = async (clobClient: ClobClient) => {
                     );
                     lastCheck = Date.now();
                 }
-    
-                // Update waiting message
+
                 if (trades.length === 0 && readyAggregations.length === 0) {
                     if (Date.now() - lastCheck > 300) {
                         const bufferedCount = getAggregationBufferSize();
@@ -170,22 +223,38 @@ const tradeExecutor = async (clobClient: ClobClient) => {
                     }
                 }
             } else {
-                // Original non-aggregation logic
                 if (trades.length > 0) {
                     Logger.clearLine();
                     Logger.header(
                         `⚡ ${trades.length} NEW TRADE${trades.length > 1 ? 'S' : ''} TO COPY`
                     );
                     for (const trade of trades) {
-                        await ErrorHandler.withErrorHandling(
-                            () => executeTrade(clobClient, trade, trade.userAddress),
-                            `Executing trade for ${trade.userAddress.slice(0, 6)}...${trade.userAddress.slice(-4)}`,
-                            'execute trade'
+                        const pendingIndices = await getPendingFollowerIndices(
+                            trade.userAddress,
+                            trade._id,
+                            followers
+                        );
+                        for (const i of pendingIndices) {
+                            await ErrorHandler.withErrorHandling(
+                                () =>
+                                    executeTrade(
+                                        clobClients[i],
+                                        trade,
+                                        trade.userAddress,
+                                        followers[i].address
+                                    ),
+                                `Executing trade for ${trade.userAddress.slice(0, 6)}...${trade.userAddress.slice(-4)}`,
+                                'execute trade'
+                            );
+                        }
+                        await markActivityFullyProcessedIfDone(
+                            trade.userAddress,
+                            trade._id,
+                            followers.length
                         );
                     }
                     lastCheck = Date.now();
                 } else {
-                    // Update waiting message every 300ms for smooth animation
                     if (Date.now() - lastCheck > 300) {
                         Logger.waiting(USER_ADDRESSES.length);
                         lastCheck = Date.now();
@@ -194,7 +263,6 @@ const tradeExecutor = async (clobClient: ClobClient) => {
             }
         } catch (error) {
             ErrorHandler.handle(error, 'Trade executor main loop');
-            // Continue running despite errors
         }
 
         if (!isRunning) break;

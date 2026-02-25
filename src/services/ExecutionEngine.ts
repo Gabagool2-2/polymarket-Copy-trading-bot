@@ -6,38 +6,41 @@
 import { ClobClient } from '@polymarket/clob-client';
 import { UserActivityInterface } from '../interfaces/User';
 import { getUserActivityModel } from '../models/userHistory';
+import { getCopyExecutionModel } from '../models/copyExecution';
 import postOrder from '../utils/postOrder';
 import Logger from '../utils/logger';
 import { ErrorHandler } from '../utils/errorHandler';
-import { DatabaseError } from '../errors';
+import { ENV } from '../config/env';
 import { validateTrade, ValidationResult } from './OrderValidator';
 import { AggregatedTrade } from './TradeAggregator';
 
+const PREVIEW_MODE = ENV.PREVIEW_MODE;
+
 /**
- * Executes a single trade by validating it, posting the order to Polymarket, and updating the database.
- * Marks the trade as processing, validates balance and positions, executes the order via postOrder,
- * and marks the trade as completed or failed based on the outcome.
- * @function executeTrade
- * @param {ClobClient} clobClient - The configured ClobClient instance for API interactions.
- * @param {UserActivityInterface} trade - The trade activity to execute.
- * @param {string} userAddress - The address of the user whose trade is being copied.
- * @returns {Promise<void>} A promise that resolves when the trade execution is complete.
- * @throws {DatabaseError} If database operations fail.
- * @throws {Error} If order posting or validation fails.
+ * Executes a single trade for one follower wallet. Records CopyExecution for multi-wallet.
+ * @param clobClient - CLOB client for this follower.
+ * @param trade - Trade to copy.
+ * @param userAddress - Trader address.
+ * @param followerWallet - Follower wallet address (for multi-wallet and validation).
  */
 const executeTrade = async (
     clobClient: ClobClient,
     trade: UserActivityInterface,
-    userAddress: string
+    userAddress: string,
+    followerWallet?: string
 ): Promise<void> => {
+    const UserActivity = getUserActivityModel(userAddress);
+    const CopyExecution = getCopyExecutionModel();
+    const isMultiWallet = typeof followerWallet === 'string' && followerWallet.length > 0;
+
     try {
-        // Mark trade as being processed immediately to prevent duplicate processing
-        const UserActivity = getUserActivityModel(userAddress);
-        await ErrorHandler.withErrorHandling(
-            () => UserActivity.updateOne({ _id: trade._id }, { $set: { botExcutedTime: 1 } }).exec(),
-            `Marking trade as processing for ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`,
-            'mark trade processing'
-        );
+        if (!isMultiWallet) {
+            await ErrorHandler.withErrorHandling(
+                () => UserActivity.updateOne({ _id: trade._id }, { $set: { botExcutedTime: 1 } }).exec(),
+                `Marking trade as processing for ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`,
+                'mark trade processing'
+            );
+        }
 
         Logger.trade(userAddress, trade.side || 'UNKNOWN', {
             asset: trade.asset,
@@ -47,25 +50,49 @@ const executeTrade = async (
             slug: trade.slug,
             eventSlug: trade.eventSlug,
             transactionHash: trade.transactionHash,
+            ...(followerWallet ? { follower: `${followerWallet.slice(0, 8)}...${followerWallet.slice(-4)}` } : {}),
         });
 
-        // Validate the trade
-        const validation: ValidationResult = await validateTrade(trade, userAddress);
+        const validation: ValidationResult = await validateTrade(
+            trade,
+            userAddress,
+            followerWallet
+        );
 
         if (!validation.isValid) {
             Logger.error(`Trade validation failed: ${validation.reason}`);
-            // Mark as failed
-            await ErrorHandler.withErrorHandling(
-                () => UserActivity.updateOne({ _id: trade._id }, { $set: { botExcutedTime: -1 } }).exec(),
-                `Marking failed validation trade for ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`,
-                'mark validation failure'
-            );
+            if (isMultiWallet && followerWallet) {
+                await CopyExecution.create({
+                    traderAddress: userAddress,
+                    activityId: trade._id,
+                    followerWallet,
+                    status: 'failed',
+                });
+            } else {
+                await UserActivity.updateOne({ _id: trade._id }, { $set: { botExcutedTime: -1 } }).exec();
+            }
             return;
         }
 
         Logger.balance(validation.myBalance!, validation.userBalance!, userAddress);
 
-        // Execute the trade
+        if (PREVIEW_MODE) {
+            Logger.info(`[PREVIEW] Would execute ${trade.side} $${trade.usdcSize?.toFixed(2) ?? '?'} for ${trade.slug || trade.asset}`);
+            if (isMultiWallet && followerWallet) {
+                await CopyExecution.create({
+                    traderAddress: userAddress,
+                    activityId: trade._id,
+                    followerWallet,
+                    status: 'success',
+                    preview: true,
+                });
+            } else {
+                await UserActivity.updateOne({ _id: trade._id }, { $set: { bot: true } }).exec();
+            }
+            Logger.separator();
+            return;
+        }
+
         await ErrorHandler.withErrorHandling(
             () => postOrder(
                 clobClient,
@@ -75,21 +102,44 @@ const executeTrade = async (
                 trade,
                 validation.myBalance!,
                 validation.userBalance!,
-                userAddress
+                userAddress,
+                isMultiWallet
             ),
             `Executing ${trade.side} trade for ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`,
             'execute trade order'
         );
 
+        if (isMultiWallet && followerWallet) {
+            const lastDoc = await UserActivity.findById(trade._id).select('myBoughtSize').lean().exec();
+            await CopyExecution.create({
+                traderAddress: userAddress,
+                activityId: trade._id,
+                followerWallet,
+                status: 'success',
+                myBoughtSize: (lastDoc as { myBoughtSize?: number })?.myBoughtSize,
+            });
+        }
+
         Logger.separator();
     } catch (error) {
         ErrorHandler.handle(error, `Trade execution for ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`);
-        // Mark as failed if not already marked
-        try {
-            const UserActivity = getUserActivityModel(userAddress);
-            await UserActivity.updateOne({ _id: trade._id }, { $set: { botExcutedTime: -1 } }).exec();
-        } catch (markError) {
-            ErrorHandler.handle(markError, `Failed to mark trade as failed for ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`);
+        if (isMultiWallet && followerWallet) {
+            try {
+                await CopyExecution.create({
+                    traderAddress: userAddress,
+                    activityId: trade._id,
+                    followerWallet,
+                    status: 'failed',
+                });
+            } catch (e) {
+                ErrorHandler.handle(e, 'Record copy execution failed');
+            }
+        } else {
+            try {
+                await UserActivity.updateOne({ _id: trade._id }, { $set: { botExcutedTime: -1 } }).exec();
+            } catch (markError) {
+                ErrorHandler.handle(markError, 'Mark trade as failed');
+            }
         }
     }
 };

@@ -12,7 +12,8 @@ import { ErrorHandler } from '../utils/errorHandler';
 import { CircuitBreakerRegistry } from '../utils/circuitBreaker';
 import { ValidationError } from '../errors';
 
-const PROXY_WALLET = ENV.PROXY_WALLET;
+/** Wallet to validate (follower). Defaults to primary proxy wallet. */
+const defaultProxyWallet = () => ENV.PROXY_WALLET;
 
 /**
  * Interface for trade validation results.
@@ -29,24 +30,21 @@ interface ValidationResult {
 
 /**
  * Validates whether a trade can be executed based on current positions and balances.
- * Performs comprehensive checks including balance verification for buy orders,
- * position data retrieval, and circuit breaker protection for API calls.
- * @function validateTrade
- * @param {UserActivityInterface} trade - The trade activity to validate.
- * @param {string} userAddress - The address of the user whose trade is being validated.
- * @returns {Promise<ValidationResult>} A promise that resolves to a validation result object containing validity status and additional data.
- * @throws {ValidationError} If positions data from API is invalid.
+ * @param trade - The trade activity to validate.
+ * @param userAddress - The address of the user (trader) whose trade is being validated.
+ * @param proxyWallet - Optional follower wallet address; if not set, uses ENV.PROXY_WALLET.
  */
 const validateTrade = async (
     trade: UserActivityInterface,
-    userAddress: string
+    userAddress: string,
+    proxyWallet?: string
 ): Promise<ValidationResult> => {
+    const myWallet = proxyWallet ?? defaultProxyWallet();
     const positionsBreaker = CircuitBreakerRegistry.getBreaker('polymarket-validation-positions', 3, 30000);
     const balanceBreaker = CircuitBreakerRegistry.getBreaker('polymarket-validation-balance', 3, 30000);
 
     try {
-        // Fetch positions with circuit breaker protection
-        const myPositionsUrl = `https://data-api.polymarket.com/positions?user=${PROXY_WALLET}`;
+        const myPositionsUrl = `https://data-api.polymarket.com/positions?user=${myWallet}`;
         const userPositionsUrl = `https://data-api.polymarket.com/positions?user=${userAddress}`;
 
         const [my_positions, user_positions] = await Promise.all([
@@ -65,8 +63,7 @@ const validateTrade = async (
             (position: UserPositionInterface) => position.conditionId === trade.conditionId
         );
 
-        // Get USDC balance with circuit breaker protection
-        const my_balance = await balanceBreaker.execute(() => getMyBalance(PROXY_WALLET));
+        const my_balance = await balanceBreaker.execute(() => getMyBalance(myWallet));
 
         // Calculate trader's total portfolio value from positions
         const user_balance = user_positions.reduce((total, pos) => {

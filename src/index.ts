@@ -5,7 +5,7 @@
 
 import connectDB, { closeDB } from './config/db';
 import { ENV } from './config/env';
-import createClobClient from './utils/createClobClient';
+import { getClobClients } from './services/createClobClient';
 import tradeExecutor, { stopTradeExecutor } from './services/tradeExecutor';
 import tradeMonitor, { stopTradeMonitor } from './services/tradeMonitor';
 import Logger from './utils/logger';
@@ -103,16 +103,20 @@ export const main = async () => {
             Logger.warning('Health check failed, but continuing startup...');
         }
 
-        Logger.info('Initializing CLOB client...');
-        const clobClient = await createClobClient();
-        Logger.success('CLOB client ready');
+        Logger.info('Initializing CLOB client(s)...');
+        const clobClients = await getClobClients();
+        Logger.success(`CLOB ready for ${clobClients.length} wallet(s)`);
+
+        if (ENV.PREVIEW_MODE) {
+            Logger.warning('⚠️  PREVIEW_MODE is ON: no real orders will be sent.');
+        }
 
         Logger.separator();
         Logger.info('Starting trade monitor...');
         tradeMonitor();
 
         Logger.info('Starting trade executor...');
-        tradeExecutor(clobClient);
+        tradeExecutor(clobClients);
 
         // test(clobClient);
     } catch (error) {

@@ -174,8 +174,9 @@ const fetchTradeData = async () => {
             // Process each activity with error handling
             for (const activity of activities) {
                 try {
-                    // Skip if too old
-                    if (activity.timestamp < TOO_OLD_TIMESTAMP) {
+                    // Skip if trade is older than TOO_OLD_TIMESTAMP hours (timestamp is Unix seconds)
+                    const cutoffSeconds = Math.floor(Date.now() / 1000) - TOO_OLD_TIMESTAMP * 3600;
+                    if (activity.timestamp < cutoffSeconds) {
                         continue;
                     }
 

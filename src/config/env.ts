@@ -174,6 +174,60 @@ const validateUrls = (): void => {
     }
 };
 
+/**
+ * Follower wallet: address + private key for copy-trading execution.
+ */
+export interface FollowerWallet {
+    address: string;
+    privateKey: string;
+}
+
+/**
+ * Parse follower wallets: FOLLOWER_WALLETS JSON array or single PROXY_WALLET + PRIVATE_KEY.
+ */
+const parseFollowerWallets = (): FollowerWallet[] => {
+    const raw = process.env.FOLLOWER_WALLETS;
+    if (raw && raw.trim()) {
+        try {
+            const parsed = JSON.parse(raw.trim());
+            if (!Array.isArray(parsed) || parsed.length === 0) {
+                throw new Error('FOLLOWER_WALLETS must be a non-empty JSON array');
+            }
+            const out: FollowerWallet[] = [];
+            for (const item of parsed) {
+                const address = (item?.address || item?.wallet || '').toString().trim().toLowerCase();
+                const privateKey = (item?.privateKey || item?.private_key || '').toString().trim();
+                if (!address || !privateKey) {
+                    throw new Error(
+                        'Each FOLLOWER_WALLETS item must have address and privateKey'
+                    );
+                }
+                if (!isValidEthereumAddress(address)) {
+                    throw new Error(`Invalid address in FOLLOWER_WALLETS: ${address}`);
+                }
+                out.push({ address, privateKey: privateKey.replace(/^0x/, '') });
+            }
+            return out;
+        } catch (e) {
+            if (e instanceof SyntaxError) {
+                throw new Error(
+                    `Invalid FOLLOWER_WALLETS JSON: ${e instanceof Error ? e.message : String(e)}`
+                );
+            }
+            throw e;
+        }
+    }
+    const pw = process.env.PROXY_WALLET;
+    const pk = process.env.PRIVATE_KEY;
+    if (!pw || !pk) return [];
+    return [
+        {
+            address: pw.toLowerCase(),
+            privateKey: (pk as string).replace(/^0x/, ''),
+        },
+    ];
+};
+
 // Run all validations
 validateRequiredEnv();
 validateAddresses();
@@ -350,10 +404,21 @@ const parseCopyStrategy = (): CopyStrategyConfig => {
     return config;
 };
 
+const followerWallets = parseFollowerWallets();
+if (followerWallets.length === 0) {
+    throw new Error('At least one wallet required: set PROXY_WALLET and PRIVATE_KEY, or FOLLOWER_WALLETS JSON array.');
+}
+
 export const ENV = {
     USER_ADDRESSES: parseUserAddresses(process.env.USER_ADDRESSES as string),
-    PROXY_WALLET: process.env.PROXY_WALLET as string,
-    PRIVATE_KEY: process.env.PRIVATE_KEY as string,
+    /** @deprecated Use FOLLOWER_WALLETS[0].address */
+    PROXY_WALLET: (process.env.PROXY_WALLET || followerWallets[0]?.address) as string,
+    /** @deprecated Use FOLLOWER_WALLETS[0].privateKey */
+    PRIVATE_KEY: (process.env.PRIVATE_KEY || followerWallets[0]?.privateKey) as string,
+    /** All follower wallets (multi-wallet copy trading). */
+    FOLLOWER_WALLETS: followerWallets,
+    /** If true, executor logs trades but does not send orders. */
+    PREVIEW_MODE: process.env.PREVIEW_MODE === 'true' || process.env.PREVIEW_MODE === '1',
     CLOB_HTTP_URL: process.env.CLOB_HTTP_URL as string,
     CLOB_WS_URL: process.env.CLOB_WS_URL as string,
     FETCH_INTERVAL: parseInt(process.env.FETCH_INTERVAL || '1', 10),
