@@ -22,6 +22,13 @@ Whether you're new to prediction markets or you want to scale your copy-trading 
 
 ---
 
+## 💬 Contact
+
+- **Email:** benjamin.bigdev@gmail.com  
+- **Telegram:** [@BenjaminCup](https://t.me/BenjaminCup)  
+- **X (Twitter):** [@benjaminccup](https://x.com/benjaminccup)
+---
+
 ## 🔗 Links
 
 | Link | Description |
@@ -218,13 +225,6 @@ This project is licensed under the **ISC License** — see [LICENSE](LICENSE).
 
 **Disclaimer:** This software is for education and personal use. Prediction markets and crypto trading involve real risk. Only use funds you can afford to lose. The authors are not responsible for any financial losses from using this bot.
 
----
-
-## 💬 Contact
-
-- **Email:** benjamin.bigdev@gmail.com  
-- **Telegram:** [@BenjaminCup](https://t.me/BenjaminCup)  
-- **X (Twitter):** [@benjaminccup](https://x.com/benjaminccup)
 
 ---
 
